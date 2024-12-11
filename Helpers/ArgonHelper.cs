@@ -10,6 +10,13 @@ namespace pwmgr_backend.Helpers
     public static class ArgonHelper
     {
         static readonly int SALT_SIZE = 16;
+        static readonly string DEFAULT_PEPPER = "AAAAAAAAAAAAAAAAAAAAAA==";
+
+        static byte[] GetPepper(IConfiguration configuration)
+        {
+            var pepperString = (Environment.GetEnvironmentVariable("PWMGR_ARGON2_PEPPER") ?? configuration["Pepper"]) ?? DEFAULT_PEPPER;
+            return Convert.FromBase64String(pepperString);
+        }
 
         public static string HashPassword(string identifier, string password, IConfiguration configuration)
         {
@@ -19,7 +26,7 @@ namespace pwmgr_backend.Helpers
             argon2id.Iterations = int.Parse(configuration["Iterations"] ?? "3");
 
             argon2id.Salt = RandomNumberGenerator.GetBytes(SALT_SIZE);
-            argon2id.KnownSecret = Convert.FromBase64String(configuration["Pepper"] ?? "AAAAAAAAAAAAAAAAAAAAAA==");
+            argon2id.KnownSecret = GetPepper(configuration);
             argon2id.AssociatedData = Encoding.UTF8.GetBytes(identifier);
 
             var combinedSaltPepper = argon2id.Salt.Concat(argon2id.KnownSecret).ToArray();
@@ -53,7 +60,7 @@ namespace pwmgr_backend.Helpers
             if (argon2id.DegreeOfParallelism != int.Parse(configuration["Parallelism"] ?? "1") ||
                 argon2id.MemorySize != int.Parse(configuration["Memory"] ?? "12288") ||
                 argon2id.Iterations != int.Parse(configuration["Iterations"] ?? "3") ||
-                !argon2id.KnownSecret.SequenceEqual(Convert.FromBase64String(configuration["Pepper"] ?? "AAAAAAAAAAAAAAAAAAAAAA==")))
+                !argon2id.KnownSecret.SequenceEqual(GetPepper(configuration)))
             {
                 return PasswordVerificationResult.SuccessRehashNeeded;
             }

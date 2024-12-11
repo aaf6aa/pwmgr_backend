@@ -15,9 +15,11 @@ namespace pwmgr_backend
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            var connectionString = Environment.GetEnvironmentVariable("PWMGR_CONNECTION_STRING") ?? builder.Configuration.GetConnectionString("DefaultConnection"); 
+            
             // Configure PostgreSQL with EF Core
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(connectionString));
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -45,7 +47,8 @@ namespace pwmgr_backend
             });
 
             var jwtSettings = builder.Configuration.GetSection("Jwt");
-            var key = Convert.FromBase64String(builder.Configuration["Jwt:Key"] ?? throw new Exception("Jwt key secret is not set"));
+            var jwtKeyString = (Environment.GetEnvironmentVariable("PWMGR_JWT_KEY") ?? builder.Configuration["Jwt:Key"]) ?? throw new Exception("Jwt key secret is not set");
+            var key = Convert.FromBase64String(jwtKeyString);
 
             builder.Services.AddAuthentication(options =>
             {

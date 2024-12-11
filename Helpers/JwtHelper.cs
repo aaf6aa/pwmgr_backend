@@ -13,7 +13,8 @@ namespace pwmgr_backend.Helpers
         {
             IConfigurationSection jwtSettings = configuration.GetSection("Jwt") ?? throw new Exception("Jwt section is missing in appsettings.json");
 
-            var key = Convert.FromBase64String(configuration["Jwt:Key"] ?? throw new Exception("Jwt key secret is not set"));
+            var keyString = (Environment.GetEnvironmentVariable("PWMGR_JWT_KEY") ?? configuration["Jwt:Key"]) ?? throw new Exception("Jwt key secret is not set");
+            var key = Convert.FromBase64String(keyString);
 
             var tokenHandler = new JwtSecurityTokenHandler();
 
