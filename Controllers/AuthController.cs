@@ -23,11 +23,37 @@ namespace pwmgr_backend.Controllers
             _configuration = configuration;
         }
 
-        // POST: api/register
+        /// <summary>
+        /// Registers a new user in the system.
+        /// </summary>
+        /// <remarks>
+        /// This endpoint creates a new user account with a unique username and hashed password.
+        /// </remarks>
+        /// <param name="request">The registration request containing the username, password, and master salt.</param>
+        /// <returns>
+        /// - 200 OK: Returns a JWT token for the newly created user.
+        /// - 400 Bad Request: If the username is already taken.
+        /// </returns>
+        /// <example>
+        /// Request:
+        /// POST api/register
+        /// {
+        ///     "username": "exampleUser",
+        ///     "password": "examplePassword",
+        ///     "masterSalt": "base64EncodedMasterSalt"
+        /// }
+        /// Response:
+        /// {
+        ///     "token": "jwtToken"
+        /// }
+        /// </example>
         [HttpPost("register")]
+        [Consumes("application/json")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(400)]
         public async Task<ActionResult> Register([FromBody] RegisterRequest request)
         {
-            // Check if the username already exists
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == request.Username.ToLower()))
             {
                 return BadRequest(new { message = "User already exists." });
@@ -44,14 +70,41 @@ namespace pwmgr_backend.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // Generate JWT Token
             var token = JwtHelper.GenerateJwtToken(user, _configuration);
-
             return Ok(new { token });
         }
 
-        // POST: api/login
+        /// <summary>
+        /// Authenticates a user and generates a JWT token.
+        /// </summary>
+        /// <remarks>
+        /// This endpoint verifies the user's credentials and returns a JWT token if successful.
+        /// </remarks>
+        /// <param name="request">The login request containing the username and password.</param>
+        /// <returns>
+        /// - 200 OK: Returns a JWT token and the user's master salt.
+        /// - 401 Unauthorized: If the password is incorrect.
+        /// - 404 Not Found: If the username is not found.
+        /// </returns>
+        /// <example>
+        /// Request:
+        /// POST api/login
+        /// {
+        ///     "username": "exampleUser",
+        ///     "password": "examplePassword"
+        /// }
+        /// Response:
+        /// {
+        ///     "token": "jwtToken",
+        ///     "masterSalt": "base64EncodedMasterSalt"
+        /// }
+        /// </example>
         [HttpPost("login")]
+        [Consumes("application/json")]
+        [Produces("application/json")]
+        [ProducesResponseType(typeof(object), 200)]
+        [ProducesResponseType(401)]
+        [ProducesResponseType(404)]
         public async Task<ActionResult> Login([FromBody] LoginRequest request)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
@@ -72,9 +125,7 @@ namespace pwmgr_backend.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            // Generate JWT Token
             var token = JwtHelper.GenerateJwtToken(user, _configuration);
-
             return Ok(new { token, masterSalt = user.MasterSalt });
         }
     }

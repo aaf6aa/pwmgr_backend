@@ -25,6 +25,11 @@ namespace pwmgr_backend.Data
                 .HasMany(u => u.PasswordEntries)
                 .WithOne(pe => pe.User)
                 .HasForeignKey(pe => pe.UserId);
+
+            // Unique constraint for ServiceUsernameHash per user
+            modelBuilder.Entity<PasswordEntry>()
+                .HasIndex(pe => new { pe.UserId, pe.ServiceUsernameHash })
+                .IsUnique();
         }
     }
 }

@@ -34,7 +34,19 @@ namespace pwmgr_backend.Models
         [NotNull]
         [Required]
         [Base64String]
-        public string? HkdfSalt { get; set; } 
+        public string? HkdfSalt { get; set; }
+
+        // Hash of the service and username
+        [NotNull]
+        [Required]
+        [Base64String]
+        public string? ServiceUsernameHash { get; set; }
+
+        // Integrity HMAC
+        [NotNull]
+        [Required]
+        [Base64String]
+        public string? Hmac { get; set; }
 
         // Navigation property
         [NotNull]
