@@ -19,10 +19,11 @@ namespace pwmgr_backend.Models
 
         [NotNull]
         [Required]
-
+        [Base64String]
         public string? MasterSalt { get; set; } 
 
-        // Navigation property
+        // Navigation properties
         public ICollection<PasswordEntry> PasswordEntries { get; set; } = Array.Empty<PasswordEntry>();
+        public ICollection<Note> Notes { get; set; } = Array.Empty<Note>();
     }
 }

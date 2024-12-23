@@ -12,6 +12,7 @@ namespace pwmgr_backend.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<PasswordEntry> PasswordEntries { get; set; }
+        public DbSet<Note> Notes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -20,15 +21,26 @@ namespace pwmgr_backend.Data
                 .HasIndex(u => u.Username)
                 .IsUnique();
 
-            // Relationship
+            // Password relationships
             modelBuilder.Entity<User>()
                 .HasMany(u => u.PasswordEntries)
                 .WithOne(pe => pe.User)
                 .HasForeignKey(pe => pe.UserId);
 
+            // Note relationships
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Notes)
+                .WithOne(n => n.User)
+                .HasForeignKey(n => n.UserId);
+
             // Unique constraint for ServiceUsernameHash per user
             modelBuilder.Entity<PasswordEntry>()
                 .HasIndex(pe => new { pe.UserId, pe.ServiceUsernameHash })
+                .IsUnique();
+
+            // Unique constraint for TitleHash per user
+            modelBuilder.Entity<Note>()
+                .HasIndex(n => new { n.UserId, n.TitleHash })
                 .IsUnique();
         }
     }

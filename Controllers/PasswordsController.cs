@@ -5,6 +5,7 @@ using pwmgr_backend.Data;
 using pwmgr_backend.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
+using System.Security.Claims;
 
 namespace pwmgr_backend.Controllers
 {
@@ -45,19 +46,19 @@ namespace pwmgr_backend.Controllers
         [ProducesResponseType(401)]
         public async Task<ActionResult<IEnumerable<PasswordMetadataResponse>>> GetPasswords()
         {
-            var userId = GetUserId();
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid userId))
+                return Unauthorized();
 
-            var passwordEntries = await _context.PasswordEntries
+            var passwords = await _context.PasswordEntries
                 .Where(pe => pe.UserId == userId)
+                .Select(pe => new PasswordMetadataResponse
+                {
+                    Id = pe.Id,
+                    EncryptedMetadata = pe.EncryptedMetadata
+                })
                 .ToListAsync();
 
-            var response = passwordEntries.Select(pe => new PasswordMetadataResponse
-            {
-                Id = pe.Id,
-                EncryptedMetadata = pe.EncryptedMetadata
-            });
-
-            return Ok(response);
+            return Ok(passwords);
         }
 
         /// <summary>
@@ -94,7 +95,8 @@ namespace pwmgr_backend.Controllers
         [ProducesResponseType(409)]
         public async Task<ActionResult> AddPassword([FromBody] PasswordDTO request)
         {
-            var userId = GetUserId();
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid userId))
+                return Unauthorized();
 
             // Check if a password entry with the same hash already exists for this user
             var existingEntry = await _context.PasswordEntries
@@ -123,7 +125,7 @@ namespace pwmgr_backend.Controllers
             await _context.SaveChangesAsync();
 
             var response = new { id = passwordEntry.Id };
-            return CreatedAtAction(nameof(GetPasswordById), response, response);
+            return CreatedAtAction(nameof(AddPassword), response, response);
         }
 
         /// <summary>
@@ -154,9 +156,10 @@ namespace pwmgr_backend.Controllers
         [ProducesResponseType(typeof(PasswordDTO), 200)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult<PasswordDTO>> GetPasswordById(Guid id)
+        public async Task<ActionResult<PasswordDTO>> GetPasswordById([FromRoute] Guid id)
         {
-            var userId = GetUserId();
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid userId))
+                return Unauthorized();
 
             var passwordEntry = await _context.PasswordEntries
                 .FirstOrDefaultAsync(pe => pe.Id == id && pe.UserId == userId);
@@ -166,7 +169,7 @@ namespace pwmgr_backend.Controllers
                 return NotFound(new { message = "Password entry not found." });
             }
 
-            var response = new PasswordDTO
+            return Ok(new PasswordDTO
             {
                 EncryptedMetadata = passwordEntry.EncryptedMetadata,
                 EncryptedPassword = passwordEntry.EncryptedPassword,
@@ -174,9 +177,7 @@ namespace pwmgr_backend.Controllers
                 HkdfSalt = passwordEntry.HkdfSalt,
                 ServiceUsernameHash = passwordEntry.ServiceUsernameHash,
                 Hmac = passwordEntry.Hmac,
-            };
-
-            return Ok(response);
+            });
         }
 
         /// <summary>
@@ -197,9 +198,10 @@ namespace pwmgr_backend.Controllers
         [ProducesResponseType(204)]
         [ProducesResponseType(401)]
         [ProducesResponseType(404)]
-        public async Task<ActionResult> DeletePassword(Guid id)
+        public async Task<ActionResult> DeletePassword([FromRoute] Guid id)
         {
-            var userId = GetUserId();
+            if (!Guid.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out Guid userId))
+                return Unauthorized();
 
             var passwordEntry = await _context.PasswordEntries
                 .FirstOrDefaultAsync(pe => pe.Id == id && pe.UserId == userId);
@@ -213,12 +215,6 @@ namespace pwmgr_backend.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
-        }
-
-        private Guid GetUserId()
-        {
-            var userIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? throw new Exception("An authorized invalid GUID encountered!! This is not possible!");
-            return Guid.Parse(userIdString);
         }
     }
 
@@ -252,7 +248,7 @@ namespace pwmgr_backend.Controllers
         [Base64String]
         public string? HkdfSalt { get; set; }
         [NotNull]
-        [Required]
+        [Base64String]
         public string? ServiceUsernameHash { get; set; }
         [NotNull]
         [Base64String]
